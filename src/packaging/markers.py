@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import operator
 import os
-import platform
 import sys
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -170,6 +169,8 @@ def format_full_version(info: sys._version_info) -> str:
 
 
 def default_environment() -> dict[str, str]:
+    import platform
+
     iver = format_full_version(sys.implementation.version)
     implementation_name = sys.implementation.name
     return {

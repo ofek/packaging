@@ -11,6 +11,7 @@ try:
 except ImportError:
     ctypes = None
 import importlib
+import logging
 import os
 import pathlib
 import platform
@@ -22,7 +23,7 @@ import types
 import pretend
 import pytest
 
-from packaging import tags
+from packaging import _logging, tags
 from packaging._manylinux import _GLibCVersion
 from packaging._musllinux import _MuslVersion
 
@@ -344,13 +345,19 @@ class TestManylinuxPlatform:
 
     def test_get_config_var_does_not_log(self, monkeypatch):
         debug = pretend.call_recorder(lambda *a: None)
-        monkeypatch.setattr(tags.logger, "debug", debug)
+        logger = logging.getLogger(__name__)
+        loggers = {"packaging.tags": logger}
+        monkeypatch.setattr(logger, "debug", debug)
+        monkeypatch.setattr(_logging, "get_logger", lambda name: loggers[name])
         tags._get_config_var("missing")
         assert debug.calls == []
 
     def test_get_config_var_does_log(self, monkeypatch):
         debug = pretend.call_recorder(lambda *a: None)
-        monkeypatch.setattr(tags.logger, "debug", debug)
+        logger = logging.getLogger(__name__)
+        loggers = {"packaging.tags": logger}
+        monkeypatch.setattr(logger, "debug", debug)
+        monkeypatch.setattr(_logging, "get_logger", lambda name: loggers[name])
         tags._get_config_var("missing", warn=True)
         assert debug.calls == [
             pretend.call(
@@ -620,14 +627,14 @@ class TestManylinuxPlatform:
 @pytest.mark.parametrize(
     "platform_name,dispatch_func",
     [
-        ("Darwin", "mac_platforms"),
-        ("Linux", "_linux_platforms"),
-        ("Generic", "_generic_platforms"),
+        ("darwin", "mac_platforms"),
+        ("linux", "_linux_platforms"),
+        ("generic", "_generic_platforms"),
     ],
 )
 def test_platform_tags(platform_name, dispatch_func, monkeypatch):
     expected = ["sillywalk"]
-    monkeypatch.setattr(platform, "system", lambda: platform_name)
+    monkeypatch.setattr(sys, "platform", platform_name)
     monkeypatch.setattr(tags, dispatch_func, lambda: expected)
     assert tags.platform_tags() == expected
 
@@ -1180,7 +1187,7 @@ class TestSysTags:
         if mock_interpreter_name("CPython"):
             monkeypatch.setattr(tags, "_cpython_abis", lambda *a: ["cp33m"])
         if platform.system() != "Darwin":
-            monkeypatch.setattr(platform, "system", lambda: "Darwin")
+            monkeypatch.setattr(sys, "platform", "darwin")
             monkeypatch.setattr(tags, "mac_platforms", lambda: ["macosx_10_5_x86_64"])
         abis = tags._cpython_abis(sys.version_info[:2])
         platforms = list(tags.mac_platforms())
@@ -1197,7 +1204,7 @@ class TestSysTags:
         if mock_interpreter_name("CPython"):
             monkeypatch.setattr(tags, "_cpython_abis", lambda *a: ["cp33m"])
         if platform.system() != "Windows":
-            monkeypatch.setattr(platform, "system", lambda: "Windows")
+            monkeypatch.setattr(sys, "platform", "win32")
             monkeypatch.setattr(tags, "_generic_platforms", lambda: ["win_amd64"])
         abis = list(tags._cpython_abis(sys.version_info[:2]))
         platforms = list(tags._generic_platforms())
@@ -1215,7 +1222,7 @@ class TestSysTags:
         if mock_interpreter_name("CPython"):
             monkeypatch.setattr(tags, "_cpython_abis", lambda *a: ["cp33m"])
         if platform.system() != "Linux":
-            monkeypatch.setattr(platform, "system", lambda: "Linux")
+            monkeypatch.setattr(sys, "platform", "linux")
             monkeypatch.setattr(tags, "_linux_platforms", lambda: ["linux_x86_64"])
         abis = list(tags._cpython_abis(sys.version_info[:2]))
         platforms = list(tags._linux_platforms())
