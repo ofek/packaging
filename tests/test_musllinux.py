@@ -5,7 +5,6 @@ import subprocess
 import pretend
 import pytest
 
-from packaging import _musllinux
 from packaging._musllinux import _get_musl_version, _MuslVersion, _parse_musl_version
 
 MUSL_AMD64 = "musl libc (x86_64)\nVersion 1.2.2\n"
@@ -63,7 +62,7 @@ def test_get_musl_version(monkeypatch, executable, output, version, ld_musl):
         return collections.namedtuple("Proc", "stderr")(output)
 
     run_recorder = pretend.call_recorder(mock_run)
-    monkeypatch.setattr(_musllinux.subprocess, "run", run_recorder)
+    monkeypatch.setattr(subprocess, "run", run_recorder)
 
     assert _get_musl_version(str(executable)) == version
 

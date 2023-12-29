@@ -3,22 +3,16 @@
 # for complete details.
 from __future__ import annotations
 
-import logging
-import platform
 import re
 import struct
-import subprocess
 import sys
-import sysconfig
 from importlib.machinery import EXTENSION_SUFFIXES
 from typing import TYPE_CHECKING, Iterable, Iterator, cast
 
-from . import _manylinux, _musllinux
+from . import _logging, _manylinux, _musllinux
 
 if TYPE_CHECKING:
     from ._types import MacVersion, PythonVersion
-
-logger = logging.getLogger(__name__)
 
 INTERPRETER_SHORT_NAMES: dict[str, str] = {
     "python": "py",  # Generic.
@@ -103,9 +97,11 @@ def parse_tag(tag: str) -> frozenset[Tag]:
 
 
 def _get_config_var(name: str, warn: bool = False) -> int | str | None:
+    import sysconfig
+
     value: int | str | None = sysconfig.get_config_var(name)
     if value is None and warn:
-        logger.debug(
+        _logging.get_logger(__name__).debug(
             "Config variable '%s' is unset, Python ABI tag may be incorrect", name
         )
     return value
@@ -399,10 +395,14 @@ def mac_platforms(
     generate platform tags for. Both parameters default to the appropriate value
     for the current system.
     """
+    import platform
+
     version_str, _, cpu_arch = platform.mac_ver()
     if version is None:
         version = cast("MacVersion", tuple(map(int, version_str.split(".")[:2])))
         if version == (10, 16):
+            import subprocess
+
             # When built against an older macOS SDK, Python will report macOS 10.16
             # instead of the real version.
             version_str = subprocess.run(
@@ -477,6 +477,8 @@ def mac_platforms(
 
 
 def _linux_platforms(is_32bit: bool = _32_BIT_INTERPRETER) -> Iterator[str]:
+    import sysconfig
+
     linux = _normalize_string(sysconfig.get_platform())
     if not linux.startswith("linux_"):
         # we should never be here, just yield the sysconfig one and return
@@ -496,6 +498,8 @@ def _linux_platforms(is_32bit: bool = _32_BIT_INTERPRETER) -> Iterator[str]:
 
 
 def _generic_platforms() -> Iterator[str]:
+    import sysconfig
+
     yield _normalize_string(sysconfig.get_platform())
 
 
@@ -503,9 +507,9 @@ def platform_tags() -> Iterator[str]:
     """
     Provides the platform tags for this installation.
     """
-    if platform.system() == "Darwin":
+    if sys.platform == "darwin":
         return mac_platforms()
-    elif platform.system() == "Linux":
+    elif sys.platform.lower().startswith("linux"):
         return _linux_platforms()
     else:
         return _generic_platforms()

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import functools
 import re
-import subprocess
 import sys
 from typing import Iterator, NamedTuple, Sequence
 
@@ -48,6 +47,9 @@ def _get_musl_version(executable: str) -> _MuslVersion | None:
         return None
     if ld is None or "musl" not in ld:
         return None
+
+    import subprocess
+
     proc = subprocess.run([ld], stderr=subprocess.PIPE, text=True)
     return _parse_musl_version(proc.stderr)
 

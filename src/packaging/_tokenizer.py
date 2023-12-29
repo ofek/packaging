@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import contextlib
 import re
-from dataclasses import dataclass
 from typing import Iterator, NoReturn
 
 from .specifiers import Specifier
 
 
-@dataclass
 class Token:
-    name: str
-    text: str
-    position: int
+    __slots__ = ("name", "text", "position")
+
+    def __init__(self, name: str, text: str, position: int) -> None:
+        self.name = name
+        self.text = text
+        self.position = position
 
 
 class ParserSyntaxError(Exception):
